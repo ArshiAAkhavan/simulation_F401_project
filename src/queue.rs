@@ -5,12 +5,11 @@ use crate::{
     task::Task,
 };
 
-pub trait TaskQueue<Ctx>
-where
-    Ctx: Context,
-{
+pub trait TaskQueue {
+    type Ctx: Context;
+
     fn push(&mut self, task: Task);
-    fn pop(&mut self) -> Option<Ctx>;
+    fn pop(&mut self) -> Option<Self::Ctx>;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -29,12 +28,13 @@ impl RRQueue {
         }
     }
 }
-impl TaskQueue<DeadlineContext> for RRQueue {
+impl TaskQueue for RRQueue {
+    type Ctx = DeadlineContext;
     fn push(&mut self, task: Task) {
         self.tasks.push_back(task)
     }
 
-    fn pop(&mut self) -> Option<DeadlineContext> {
+    fn pop(&mut self) -> Option<Self::Ctx> {
         self.tasks
             .pop_front()
             .map(|t| t.with_deadline(self.timeslice))
@@ -56,12 +56,13 @@ impl Fifo {
     }
 }
 
-impl TaskQueue<DefaultContext> for Fifo {
+impl TaskQueue for Fifo {
+    type Ctx = DefaultContext;
     fn push(&mut self, task: Task) {
         self.tasks.push(task)
     }
 
-    fn pop(&mut self) -> Option<DefaultContext> {
+    fn pop(&mut self) -> Option<Self::Ctx> {
         self.tasks.pop().map(|t| t.with_context())
     }
 
