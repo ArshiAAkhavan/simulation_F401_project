@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use queue::{Fifo, RRQueue, TaskQueue};
 use rand_distr::{Distribution, Exp, ExpError, Poisson, PoissonError};
 use std::{collections::BinaryHeap, fmt::Display, path::Path};
@@ -6,7 +5,6 @@ use csv::Writer;
 
 mod context;
 mod queue;
-mod stage;
 pub mod task;
 use context::Context;
 use task::{Task, TaskDefinition};
