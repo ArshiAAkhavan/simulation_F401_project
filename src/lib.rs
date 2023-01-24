@@ -105,13 +105,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
 
         // loading the task
         if self.running_task.is_none() {
-            if let Some(t) = self.q1.pop() {
-                self.running_task = Some((Box::new(t), QueueLayer::L1))
-            } else if let Some(t) = self.q2.pop() {
-                self.running_task = Some((Box::new(t), QueueLayer::L2))
-            } else if let Some(t) = self.q3.pop() {
-                self.running_task = Some((Box::new(t), QueueLayer::L3))
-            }
+            self.running_task = self.dispatch();
         }
 
         // executing the task
@@ -148,6 +142,18 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             if counter == 0 {
                 break;
             }
+        }
+    }
+
+    fn dispatch(&mut self) -> Option<(Box<dyn Context>, QueueLayer)> {
+        if let Some(t) = self.q1.pop() {
+            Some((Box::new(t), QueueLayer::L1))
+        } else if let Some(t) = self.q2.pop() {
+            Some((Box::new(t), QueueLayer::L2))
+        } else if let Some(t) = self.q3.pop() {
+            Some((Box::new(t), QueueLayer::L3))
+        } else {
+            None
         }
     }
 
