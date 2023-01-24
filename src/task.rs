@@ -48,7 +48,7 @@ impl Task {
 
     pub fn exec(&mut self, clock: usize) {
         self.progress.push(clock);
-        self.remaining = self.remaining.checked_sub(1).unwrap_or(0);
+        self.remaining = self.remaining.saturating_sub(1);
         if self.remaining == 0 {
             self.status = Status::Finished
         } else {
