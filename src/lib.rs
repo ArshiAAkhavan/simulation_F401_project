@@ -1,13 +1,57 @@
 #![allow(dead_code)]
 use queue::{Fifo, RRQueue, TaskQueue};
 use rand_distr::{Distribution, Exp, ExpError, Poisson, PoissonError};
-use std::collections::BinaryHeap;
+use std::{collections::BinaryHeap, fmt::Display, path::Path};
+use csv::Writer;
 
 mod context;
 mod queue;
-mod task;
+mod stage;
+pub mod task;
 use context::Context;
 use task::{Task, TaskDefinition};
+
+enum QueueLayer {
+    L1,
+    L2,
+    L3,
+}
+
+impl Display for Scheduler<RRQueue, RRQueue, Fifo> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "clock: {},mjr: {}",
+            self.clock, self.minimum_job_required
+        )?;
+        writeln!(
+            f,
+            "job sync in: {}",
+            self.job_sync_period - (self.clock % self.job_sync_period)
+        )?;
+        writeln!(f, "jobs in pq:")?;
+        for task in &self.priority_queue {
+            writeln!(f, "{task:?}")?;
+        }
+        writeln!(f, "jobs in rr1:")?;
+        for task in &self.q1.tasks {
+            writeln!(f, "{:?}", task)?;
+        }
+        writeln!(f, "jobs in rr2:")?;
+        for task in &self.q2.tasks {
+            writeln!(f, "{:?}", task)?;
+        }
+        writeln!(f, "jobs in fifo:")?;
+        for task in &self.q3.tasks {
+            writeln!(f, "{:?}", task)?;
+        }
+        writeln!(f, "finished jobs:")?;
+        for task in &self.done {
+            writeln!(f, "{:?}", task)?;
+        }
+        Ok(())
+    }
+}
 
 pub struct Scheduler<Q1, Q2, Q3> {
     clock: usize,
@@ -18,8 +62,8 @@ pub struct Scheduler<Q1, Q2, Q3> {
     q1: Q1,
     q2: Q2,
     q3: Q3,
-
-    running_task: Option<Box<dyn Context>>,
+    done: Vec<Task>,
+    running_task: Option<(Box<dyn Context>, QueueLayer)>,
 }
 
 impl Scheduler<RRQueue, RRQueue, Fifo> {
@@ -38,13 +82,14 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             q1: RRQueue::new(rr_t1),
             q2: RRQueue::new(rr_t2),
             q3: Fifo::new(),
+            done: Vec::new(),
             minimum_job_required,
             job_creator: JobCreator::new(arrival_rate, exec_rate)?,
             running_task: None,
         })
     }
 
-    fn submit(&mut self, task: TaskDefinition) {
+    pub fn submit(&mut self, task: TaskDefinition) {
         self.priority_queue.push(Task::new_with_priority(
             task.exec_time,
             task.priority,
@@ -60,21 +105,34 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             self.sync_jobs()
         }
 
+        // loading the task
         if self.running_task.is_none() {
             if let Some(t) = self.q1.pop() {
-                self.running_task = Some(Box::new(t))
+                self.running_task = Some((Box::new(t), QueueLayer::L1))
             } else if let Some(t) = self.q2.pop() {
-                self.running_task = Some(Box::new(t))
+                self.running_task = Some((Box::new(t), QueueLayer::L2))
             } else if let Some(t) = self.q3.pop() {
-                self.running_task = Some(Box::new(t))
+                self.running_task = Some((Box::new(t), QueueLayer::L3))
             }
         }
 
-        if let Some(job) = self.running_task.as_mut() {
-            match job.exec(self.clock) {
-                context::Status::Ready => (),
-                context::Status::TimeOut => todo!(),
-                context::Status::Finished => self.running_task = None,
+        // executing the task
+        if let Some((mut job, prev_layer)) = self.running_task.take() {
+            self.running_task = match dbg!(job.exec(self.clock)) {
+                context::Status::Ready => Some((job, prev_layer)),
+                context::Status::TimeOut => {
+                    let task = job.take();
+                    match prev_layer {
+                        QueueLayer::L1 => self.q2.push(task),
+                        QueueLayer::L2 => self.q3.push(task),
+                        QueueLayer::L3 => unreachable!("since its fifo and has no timeout"),
+                    };
+                    None
+                }
+                context::Status::Finished => {
+                    self.done.push(job.take());
+                    None
+                }
             }
         }
 
@@ -92,6 +150,12 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             if counter == 0 {
                 break;
             }
+        }
+    }
+    pub fn export(&self,path: &Path) {
+        let mut wtr=Writer::from_path(path).unwrap();
+        for t in &self.done {
+            wtr.serialize(t.export());
         }
     }
 }

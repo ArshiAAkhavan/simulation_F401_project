@@ -1,12 +1,12 @@
 use std::collections::VecDeque;
 
 use crate::{
-    context::{Context, DeadlineContext, DefaultContext},
+    context::{DeadlineContext, DefaultContext},
     task::Task,
 };
 
 pub trait TaskQueue {
-    type Ctx: Context;
+    type Ctx;
 
     fn push(&mut self, task: Task);
     fn pop(&mut self) -> Option<Self::Ctx>;
@@ -16,9 +16,10 @@ pub trait TaskQueue {
     }
 }
 
+#[derive(Debug)]
 pub struct RRQueue {
     timeslice: usize,
-    tasks: VecDeque<Task>,
+    pub tasks: VecDeque<Task>,
 }
 impl RRQueue {
     pub fn new(timeslice: usize) -> Self {
@@ -45,9 +46,9 @@ impl TaskQueue for RRQueue {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Fifo {
-    tasks: Vec<Task>,
+    pub tasks: Vec<Task>,
 }
 
 impl Fifo {

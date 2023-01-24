@@ -1,23 +1,24 @@
-use std::cmp::{min, Ordering};
+use std::cmp::Ordering;
 
 use rand_distr::{Distribution, Standard};
+use serde::Serialize;
 
-use crate::context::{DefaultContext, DeadlineContext};
+use crate::context::{DeadlineContext, DefaultContext};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Task {
     exec_time: usize,
-    arival_time: usize,
+    arrival_time: usize,
     remaining: usize,
     pub priority: Priority,
     pub status: Status,
-    progress: Vec<(usize, usize)>,
+    pub progress: Vec<usize>,
 }
 impl PartialOrd for Task {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(match self.priority.cmp(&other.priority) {
             Ordering::Less => Ordering::Less,
-            Ordering::Equal => self.arival_time.cmp(&other.arival_time),
+            Ordering::Equal => self.arrival_time.cmp(&other.arrival_time),
             Ordering::Greater => Ordering::Greater,
         })
     }
@@ -27,7 +28,7 @@ impl Ord for Task {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.priority.cmp(&other.priority) {
             Ordering::Less => Ordering::Less,
-            Ordering::Equal => self.arival_time.cmp(&other.arival_time),
+            Ordering::Equal => self.arrival_time.cmp(&other.arrival_time),
             Ordering::Greater => Ordering::Greater,
         }
     }
@@ -37,7 +38,7 @@ impl Task {
     pub fn new_with_priority(exec_time: usize, priority: Priority, arival_time: usize) -> Self {
         Self {
             exec_time,
-            arival_time,
+            arrival_time: arival_time,
             remaining: exec_time,
             priority,
             status: Status::Ready,
@@ -45,10 +46,9 @@ impl Task {
         }
     }
 
-    pub fn exec(&mut self, amount: usize, clock: usize) {
-        self.progress
-            .push((clock, clock + min(amount, self.remaining)));
-        self.remaining = self.remaining.checked_sub(amount).unwrap_or(0);
+    pub fn exec(&mut self, clock: usize) {
+        self.progress.push(clock);
+        self.remaining = self.remaining.checked_sub(1).unwrap_or(0);
         if self.remaining == 0 {
             self.status = Status::Finished
         } else {
@@ -62,6 +62,27 @@ impl Task {
     pub fn with_context(self) -> DefaultContext {
         DefaultContext::new(self)
     }
+
+    pub fn export(&self) -> TaskRecord {
+        TaskRecord {
+            service_start: self.progress.first().copied().unwrap_or_default(),
+            service_end: self.progress.last().copied().unwrap_or_default(),
+            arrival_time: self.arrival_time,
+            service_time: self.progress.len(),
+            exec_time: self.exec_time,
+            priority: format!("{:?}", self.priority),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct TaskRecord {
+    service_start: usize,
+    service_end: usize,
+    arrival_time: usize,
+    service_time: usize,
+    exec_time: usize,
+    priority: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -100,4 +121,3 @@ impl TaskDefinition {
         }
     }
 }
-
