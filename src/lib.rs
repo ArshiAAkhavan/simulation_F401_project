@@ -105,7 +105,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
 
         // loading the task
         if self.running_task.is_none() {
-            self.running_task = self.dispatch();
+            self.running_task = self.default_dispatch();
         }
 
         // executing the task
@@ -145,7 +145,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
         }
     }
 
-    fn dispatch(&mut self) -> Option<(Box<dyn Context>, QueueLayer)> {
+    fn default_dispatch(&mut self) -> Option<(Box<dyn Context>, QueueLayer)> {
         if let Some(t) = self.q1.pop() {
             Some((Box::new(t), QueueLayer::L1))
         } else if let Some(t) = self.q2.pop() {
