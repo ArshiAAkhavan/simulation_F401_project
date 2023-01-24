@@ -62,6 +62,7 @@ pub struct Scheduler<Q1, Q2, Q3> {
     q3: Q3,
     done: Vec<Task>,
     running_task: Option<(Box<dyn Context>, QueueLayer)>,
+    is_dispatcher_weighted: bool,
 }
 
 impl Scheduler<RRQueue, RRQueue, Fifo> {
@@ -72,6 +73,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
         exec_rate: f64,
         rr_t1: usize,
         rr_t2: usize,
+        is_dispatcher_weighted: bool,
     ) -> Result<Self, SchedulerError> {
         Ok(Self {
             clock: 0,
@@ -84,6 +86,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             minimum_job_required,
             job_creator: JobCreator::new(arrival_rate, exec_rate)?,
             running_task: None,
+            is_dispatcher_weighted,
         })
     }
 
