@@ -1,7 +1,7 @@
+use csv::Writer;
 use queue::{Fifo, RRQueue, TaskQueue};
 use rand_distr::{Distribution, Exp, ExpError, Poisson, PoissonError};
 use std::{collections::BinaryHeap, fmt::Display, path::Path};
-use csv::Writer;
 
 mod context;
 mod queue;
@@ -150,8 +150,9 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             }
         }
     }
-    pub fn export(&self,path: &Path) {
-        let mut wtr=Writer::from_path(path).unwrap();
+
+    pub fn export(&self, path: &Path) {
+        let mut wtr = Writer::from_path(path).unwrap();
         for t in &self.done {
             wtr.serialize(t.export());
         }

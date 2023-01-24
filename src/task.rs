@@ -100,9 +100,9 @@ pub enum Priority {
 impl Distribution<Priority> for Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Priority {
         match rng.gen::<f64>() {
-            0.0..=0.7 => Priority::Low,
-            0.7..=0.9 => Priority::Normal,
-            0.9..=1.0 => Priority::High,
+            x if (0.0..0.7).contains(&x) => Priority::Low,
+            x if (0.7..0.9).contains(&x) => Priority::Normal,
+            x if (0.9..1.0).contains(&x) => Priority::High,
             _ => unreachable!(),
         }
     }
