@@ -74,6 +74,7 @@ impl Scheduler<DefaultDispatcher> {
         exec_rate: f64,
         rr_t1: usize,
         rr_t2: usize,
+        timeout_rate: Option<f64>,
     ) -> Result<Self, SchedulerError> {
         Ok(Self {
             clock: 0,
@@ -85,7 +86,7 @@ impl Scheduler<DefaultDispatcher> {
             done: Vec::new(),
             phantom: PhantomData,
             job_threshold,
-            job_creator: JobCreator::new(arrival_rate, exec_rate)?,
+            job_creator: JobCreator::new(arrival_rate, exec_rate, timeout_rate)?,
             running_task: None,
         })
     }
@@ -125,7 +126,7 @@ where
 
         // executing the task
         if let Some((mut job, prev_layer)) = self.running_task.take() {
-            self.running_task = match dbg!(job.exec(self.clock)) {
+            self.running_task = match job.exec(self.clock) {
                 context::Status::Ready => Some((job, prev_layer)),
                 context::Status::TimeOut => {
                     let task = job.take();
@@ -149,10 +150,11 @@ where
 
 impl<Dispatcher> Scheduler<Dispatcher> {
     pub fn submit(&mut self, task: TaskDefinition) {
-        self.priority_queue.push(Task::new_with_priority(
+        self.priority_queue.push(Task::new(
             task.exec_time,
             task.priority,
             self.clock,
+            task.timeout,
         ));
     }
 

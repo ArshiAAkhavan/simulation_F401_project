@@ -34,7 +34,8 @@ struct Cli {
     #[arg(short, long)]
     weighted_dispatcher: bool,
 
-    /// set timeout rate of each task, regardless of its queue
+    /// set timeout rate of each task, regardless of its queue.
+    /// if not set, task would run without any timeout
     #[arg(short, long)]
     timeout_rate: Option<f64>,
 
@@ -54,6 +55,7 @@ fn main() {
         opt.exec_rate,
         opt.rrt1,
         opt.rrt2,
+        opt.timeout_rate,
     ) {
         Ok(sc) => sc,
         Err(e) => match e {
@@ -63,10 +65,7 @@ fn main() {
             }
         },
     };
-    sc.submit(TaskDefinition {
-        exec_time: 1,
-        priority: simul::task::Priority::High,
-    });
+    sc.submit(TaskDefinition::new(5, simul::task::Priority::High, Some(3)));
     match opt.weighted_dispatcher {
         true => {
             let mut sc = sc.with_weighted_dispatcher();
@@ -83,9 +82,9 @@ where
 {
     for _ in 0..duration {
         // std::io::stdin().read_line(&mut String::new());
-        println!("{CLEAR}");
+        // println!("{CLEAR}");
         sc.run();
-        println!("{sc}");
+        // println!("{sc}");
     }
     sc.export(&PathBuf::from("res.csv"));
 }

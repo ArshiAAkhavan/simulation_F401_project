@@ -13,6 +13,7 @@ pub struct Task {
     pub priority: Priority,
     pub status: Status,
     pub progress: Vec<usize>,
+    timeout: Option<usize>,
 }
 impl PartialOrd for Task {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -35,7 +36,12 @@ impl Ord for Task {
 }
 
 impl Task {
-    pub fn new_with_priority(exec_time: usize, priority: Priority, arival_time: usize) -> Self {
+    pub fn new(
+        exec_time: usize,
+        priority: Priority,
+        arival_time: usize,
+        timeout: Option<usize>,
+    ) -> Self {
         Self {
             exec_time,
             arrival_time: arival_time,
@@ -43,10 +49,18 @@ impl Task {
             priority,
             status: Status::Ready,
             progress: Vec::new(),
+            timeout,
         }
     }
 
     pub fn exec(&mut self, clock: usize) {
+        if let Some(timeout) = self.timeout {
+            if timeout < self.arrival_time + clock {
+                self.status = Status::Finished;
+                return;
+            }
+        }
+
         self.progress.push(clock);
         self.remaining = self.remaining.saturating_sub(1);
         if self.remaining == 0 {
@@ -111,13 +125,15 @@ impl Distribution<Priority> for Standard {
 pub struct TaskDefinition {
     pub exec_time: usize,
     pub priority: Priority,
+    pub timeout: Option<usize>,
 }
 
 impl TaskDefinition {
-    pub fn new(exec_time: usize, priority: Priority) -> Self {
+    pub fn new(exec_time: usize, priority: Priority, timeout: Option<usize>) -> Self {
         Self {
             exec_time,
             priority,
+            timeout,
         }
     }
 }

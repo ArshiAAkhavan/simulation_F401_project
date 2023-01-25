@@ -35,9 +35,9 @@ impl DefaultContext {
 
 impl Context for DeadlineContext {
     fn exec(&mut self, clock: usize) -> Status {
-        println!("deadline: {}", self.deadline);
-        println!("{:?}", self.task);
-        println!("{:?}", self.task.progress);
+        // println!("deadline: {}", self.deadline);
+        // println!("{:?}", self.task);
+        // println!("{:?}", self.task.progress);
         if self.deadline == 0 {
             return match self.task.status {
                 task::Status::Ready => Status::TimeOut,
