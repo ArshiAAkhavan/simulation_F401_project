@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use simul::{task::TaskDefinition, Scheduler};
+use simul::{task::TaskDefinition, JobDispatcher, Scheduler};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -54,7 +54,6 @@ fn main() {
         opt.exec_rate,
         opt.rrt1,
         opt.rrt2,
-        opt.weighted_dispatcher,
     ) {
         Ok(sc) => sc,
         Err(e) => match e {
@@ -68,7 +67,21 @@ fn main() {
         exec_time: 1,
         priority: simul::task::Priority::High,
     });
-    for _ in 0..opt.duration {
+    match opt.weighted_dispatcher {
+        true => {
+            let mut sc = sc.with_weighted_dispatcher();
+            run_simulation(&mut sc, opt.duration);
+        }
+        false => {
+            run_simulation(&mut sc, opt.duration);
+        }
+    }
+}
+fn run_simulation<D>(sc: &mut Scheduler<D>, duration: usize)
+where
+    Scheduler<D>: JobDispatcher,
+{
+    for _ in 0..duration {
         // std::io::stdin().read_line(&mut String::new());
         println!("{CLEAR}");
         sc.run();

@@ -1,27 +1,29 @@
 use csv::Writer;
+use job_creator::JobCreator;
+use job_dispatcher::{DefaultDispatcher, WeightedDispatcher};
 use queue::{Fifo, RRQueue, TaskQueue};
-use rand_distr::{Distribution, Exp, ExpError, Poisson, PoissonError};
-use std::{collections::BinaryHeap, fmt::Display, path::Path};
+use std::{collections::BinaryHeap, fmt::Display, marker::PhantomData, path::Path};
 
 mod context;
+mod error;
+mod job_creator;
+mod job_dispatcher;
 mod queue;
-pub mod task;
 use context::Context;
+pub mod task;
+pub use error::SchedulerError;
+pub use job_dispatcher::JobDispatcher;
 use task::{Task, TaskDefinition};
 
-enum QueueLayer {
+pub enum QueueLayer {
     L1,
     L2,
     L3,
 }
 
-impl Display for Scheduler<RRQueue, RRQueue, Fifo> {
+impl<D> Display for Scheduler<D> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "clock: {},mjr: {}",
-            self.clock, self.minimum_job_required
-        )?;
+        writeln!(f, "clock: {},mjr: {}", self.clock, self.job_threshold)?;
         writeln!(
             f,
             "job sync in: {}",
@@ -51,29 +53,27 @@ impl Display for Scheduler<RRQueue, RRQueue, Fifo> {
     }
 }
 
-pub struct Scheduler<Q1, Q2, Q3> {
+pub struct Scheduler<Dispatcher> {
     clock: usize,
     job_sync_period: usize,
-    minimum_job_required: usize,
+    job_threshold: usize,
     job_creator: JobCreator,
     priority_queue: BinaryHeap<Task>,
-    q1: Q1,
-    q2: Q2,
-    q3: Q3,
+    q1: RRQueue,
+    q2: RRQueue,
+    q3: Fifo,
     done: Vec<Task>,
     running_task: Option<(Box<dyn Context>, QueueLayer)>,
-    is_dispatcher_weighted: bool,
+    phantom: PhantomData<Dispatcher>,
 }
-
-impl Scheduler<RRQueue, RRQueue, Fifo> {
+impl Scheduler<DefaultDispatcher> {
     pub fn new(
         job_sync_period: usize,
-        minimum_job_required: usize,
+        job_threshold: usize,
         arrival_rate: f64,
         exec_rate: f64,
         rr_t1: usize,
         rr_t2: usize,
-        is_dispatcher_weighted: bool,
     ) -> Result<Self, SchedulerError> {
         Ok(Self {
             clock: 0,
@@ -83,21 +83,33 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
             q2: RRQueue::new(rr_t2),
             q3: Fifo::new(),
             done: Vec::new(),
-            minimum_job_required,
+            phantom: PhantomData,
+            job_threshold,
             job_creator: JobCreator::new(arrival_rate, exec_rate)?,
             running_task: None,
-            is_dispatcher_weighted,
         })
     }
-
-    pub fn submit(&mut self, task: TaskDefinition) {
-        self.priority_queue.push(Task::new_with_priority(
-            task.exec_time,
-            task.priority,
-            self.clock,
-        ));
+    pub fn with_weighted_dispatcher(self) -> Scheduler<WeightedDispatcher> {
+        Scheduler {
+            clock: self.clock,
+            priority_queue: self.priority_queue,
+            job_sync_period: self.job_sync_period,
+            q1: self.q1,
+            q2: self.q2,
+            q3: self.q3,
+            done: self.done,
+            phantom: PhantomData,
+            job_threshold: self.job_threshold,
+            job_creator: self.job_creator,
+            running_task: self.running_task,
+        }
     }
+}
 
+impl<Dispatcher> Scheduler<Dispatcher>
+where
+    Scheduler<Dispatcher>: JobDispatcher,
+{
     pub fn run(&mut self) {
         if let Some(task) = self.job_creator.poll() {
             self.submit(task)
@@ -108,7 +120,7 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
 
         // loading the task
         if self.running_task.is_none() {
-            self.running_task = self.default_dispatch();
+            self.running_task = self.dispatch();
         }
 
         // executing the task
@@ -133,12 +145,22 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
 
         self.clock += 1;
     }
+}
+
+impl<Dispatcher> Scheduler<Dispatcher> {
+    pub fn submit(&mut self, task: TaskDefinition) {
+        self.priority_queue.push(Task::new_with_priority(
+            task.exec_time,
+            task.priority,
+            self.clock,
+        ));
+    }
 
     fn sync_jobs(&mut self) {
-        if self.q1.len() + self.q2.len() + self.q3.len() >= self.minimum_job_required {
+        if self.q1.len() + self.q2.len() + self.q3.len() >= self.job_threshold {
             return;
         }
-        let mut counter = self.minimum_job_required;
+        let mut counter = self.job_threshold;
         while let Some(task) = self.priority_queue.pop() {
             self.q1.push(task);
             counter -= 1;
@@ -148,66 +170,10 @@ impl Scheduler<RRQueue, RRQueue, Fifo> {
         }
     }
 
-    fn default_dispatch(&mut self) -> Option<(Box<dyn Context>, QueueLayer)> {
-        if let Some(t) = self.q1.pop() {
-            Some((Box::new(t), QueueLayer::L1))
-        } else if let Some(t) = self.q2.pop() {
-            Some((Box::new(t), QueueLayer::L2))
-        } else if let Some(t) = self.q3.pop() {
-            Some((Box::new(t), QueueLayer::L3))
-        } else {
-            None
-        }
-    }
-
     pub fn export(&self, path: &Path) {
         let mut wtr = Writer::from_path(path).unwrap();
         for t in &self.done {
             wtr.serialize(t.export());
         }
-    }
-}
-
-#[derive(Debug)]
-struct JobCreator {
-    interval_rnd: Poisson<f64>,
-    exectime_rnd: Exp<f64>,
-    next_dispatch: usize,
-}
-impl JobCreator {
-    fn new(arrival_rate: f64, exec_rate: f64) -> Result<Self, SchedulerError> {
-        Ok(Self {
-            interval_rnd: Poisson::new(arrival_rate)?,
-            exectime_rnd: Exp::new(exec_rate)?,
-            next_dispatch: 0,
-        })
-    }
-    fn poll(&mut self) -> Option<TaskDefinition> {
-        if self.next_dispatch == 0 {
-            self.next_dispatch = self.interval_rnd.sample(&mut rand::thread_rng()) as usize;
-            return Some(TaskDefinition::new(
-                self.exectime_rnd.sample(&mut rand::thread_rng()) as usize,
-                rand::random(),
-            ));
-        }
-        self.next_dispatch -= 1;
-        None
-    }
-}
-
-pub enum SchedulerError {
-    ArrivalRateTooSmall,
-    ServiceRateTooSmall,
-}
-
-impl From<PoissonError> for SchedulerError {
-    fn from(_: PoissonError) -> Self {
-        Self::ArrivalRateTooSmall
-    }
-}
-
-impl From<ExpError> for SchedulerError {
-    fn from(_: ExpError) -> Self {
-        Self::ServiceRateTooSmall
     }
 }
