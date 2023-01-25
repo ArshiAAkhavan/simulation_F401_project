@@ -173,7 +173,7 @@ impl<Dispatcher> Scheduler<Dispatcher> {
     pub fn export(&self, path: &Path) {
         let mut wtr = Writer::from_path(path).unwrap();
         for t in &self.done {
-            wtr.serialize(t.export());
+            let _ = wtr.serialize(t.export());
         }
     }
 }
