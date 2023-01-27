@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use simul::{task::TaskDefinition, JobDispatcher, Scheduler};
@@ -42,6 +42,10 @@ struct Cli {
     /// test duration
     #[arg(short, long)]
     duration: usize,
+
+    /// output file path
+    #[arg(short, long)]
+    output_path: PathBuf,
 }
 
 const CLEAR: &str = "\x1B[2J\x1B[1;1H";
@@ -69,14 +73,14 @@ fn main() {
     match opt.weighted_dispatcher {
         true => {
             let mut sc = sc.with_weighted_dispatcher();
-            run_simulation(&mut sc, opt.duration);
+            run_simulation(&mut sc, opt.duration, &opt.output_path);
         }
         false => {
-            run_simulation(&mut sc, opt.duration);
+            run_simulation(&mut sc, opt.duration, &opt.output_path);
         }
     }
 }
-fn run_simulation<D>(sc: &mut Scheduler<D>, duration: usize)
+fn run_simulation<D>(sc: &mut Scheduler<D>, duration: usize, output_path: &Path)
 where
     Scheduler<D>: JobDispatcher,
 {
@@ -86,5 +90,5 @@ where
         sc.run();
         // println!("{sc}");
     }
-    sc.export(&PathBuf::from("res.csv"));
+    sc.export(output_path);
 }
