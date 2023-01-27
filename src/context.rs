@@ -58,8 +58,8 @@ impl Context for DeadlineContext {
 }
 impl Context for DefaultContext {
     fn exec(&mut self, clock: usize) -> Status {
-        println!("{:?}", self.task);
-        println!("{:?}", self.task.progress);
+        // println!("{:?}", self.task);
+        // println!("{:?}", self.task.progress);
         match self.task.status {
             task::Status::Ready => {
                 self.task.exec(clock);
