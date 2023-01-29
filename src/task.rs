@@ -10,9 +10,9 @@ pub struct Task {
     exec_time: usize,
     arrival_time: usize,
     remaining: usize,
-    pub priority: Priority,
+    priority: Priority,
     pub status: Status,
-    pub progress: Vec<usize>,
+    progress: Vec<usize>,
     timeout: Option<usize>,
 }
 impl PartialOrd for Task {
@@ -85,7 +85,7 @@ impl Task {
             service_time: self.progress.len(),
             exec_time: self.exec_time,
             priority: format!("{:?}", self.priority),
-            status: format!("{:?}",self.status),
+            status: format!("{:?}", self.status),
         }
     }
 }

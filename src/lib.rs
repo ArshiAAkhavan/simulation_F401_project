@@ -149,7 +149,7 @@ where
 }
 
 impl<Dispatcher> Scheduler<Dispatcher> {
-    pub fn submit(&mut self, task: TaskDefinition) {
+    fn submit(&mut self, task: TaskDefinition) {
         self.priority_queue.push(Task::new(
             task.exec_time,
             task.priority,
