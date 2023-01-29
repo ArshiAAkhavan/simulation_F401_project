@@ -22,7 +22,7 @@ impl JobCreator {
             None
         };
         Ok(Self {
-            interval_rnd: Poisson::new(1f64 / arrival_rate)?,
+            interval_rnd: Poisson::new(arrival_rate)?,
             exectime_rnd: Exp::new(1f64 / exec_rate)?,
             timeout_rnd,
             next_dispatch: 0,
