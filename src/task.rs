@@ -56,7 +56,7 @@ impl Task {
     pub fn exec(&mut self, clock: usize) {
         if let Some(timeout) = self.timeout {
             if timeout < self.arrival_time + clock {
-                self.status = Status::Finished;
+                self.status = Status::TimeOut;
                 return;
             }
         }
@@ -85,6 +85,7 @@ impl Task {
             service_time: self.progress.len(),
             exec_time: self.exec_time,
             priority: format!("{:?}", self.priority),
+            status: format!("{:?}",self.status),
         }
     }
 }
@@ -97,12 +98,14 @@ pub struct TaskRecord {
     service_time: usize,
     exec_time: usize,
     priority: String,
+    status: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Status {
     Ready,
     Finished,
+    TimeOut,
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
