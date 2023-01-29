@@ -37,6 +37,6 @@ impl JobDispatcher for Scheduler<WeightedDispatcher> {
         } else if let Some(t) = self.q3.pop() {
             return Some((Box::new(t), QueueLayer::L3));
         }
-        return None;
+        None
     }
 }
