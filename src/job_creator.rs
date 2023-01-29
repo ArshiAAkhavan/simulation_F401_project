@@ -17,13 +17,13 @@ impl JobCreator {
         timeout_rate: Option<f64>,
     ) -> Result<Self, SchedulerError> {
         let timeout_rnd = if let Some(timeout_rate) = timeout_rate {
-            Some(Exp::new(timeout_rate)?)
+            Some(Exp::new(1f64/timeout_rate)?)
         } else {
             None
         };
         Ok(Self {
             interval_rnd: Poisson::new(arrival_rate)?,
-            exectime_rnd: Exp::new(exec_rate)?,
+            exectime_rnd: Exp::new(1f64/exec_rate)?,
             timeout_rnd,
             next_dispatch: 0,
         })
