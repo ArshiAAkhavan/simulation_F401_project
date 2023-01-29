@@ -174,9 +174,15 @@ impl<Dispatcher> Scheduler<Dispatcher> {
 
     pub fn export(&self, path: &Path) {
         let mut wtr = Writer::from_path(path).unwrap();
-        for t in &self.done {
+        for t in self
+            .done
+            .iter()
+            .chain(self.q1.tasks.iter())
+            .chain(self.q2.tasks.iter())
+            .chain(self.q3.tasks.iter())
+            .chain(self.priority_queue.iter())
+        {
             let _ = wtr.serialize(t.export());
         }
-        //TODO export other queues
     }
 }
