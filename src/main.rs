@@ -48,7 +48,6 @@ struct Cli {
     output_path: PathBuf,
 }
 
-const CLEAR: &str = "\x1B[2J\x1B[1;1H";
 fn main() {
     let opt = Cli::parse();
 
@@ -69,7 +68,6 @@ fn main() {
             }
         },
     };
-    sc.submit(TaskDefinition::new(5, simul::task::Priority::High, Some(3)));
     match opt.weighted_dispatcher {
         true => {
             let mut sc = sc.with_weighted_dispatcher();
@@ -85,10 +83,7 @@ where
     Scheduler<D>: JobDispatcher,
 {
     for _ in 0..duration {
-        // std::io::stdin().read_line(&mut String::new());
-        // println!("{CLEAR}");
         sc.run();
-        // println!("{sc}");
     }
     sc.export(output_path);
 }
