@@ -31,10 +31,9 @@ impl JobCreator {
     pub(crate) fn poll(&mut self) -> Option<TaskDefinition> {
         if self.next_dispatch == 0 {
             self.next_dispatch = self.interval_rnd.sample(&mut rand::thread_rng()) as usize;
-            let timeout = match self.timeout_rnd {
-                Some(exp) => Some(exp.sample(&mut rand::thread_rng()) as usize),
-                None => None,
-            };
+            let timeout = self
+                .timeout_rnd
+                .map(|exp| exp.sample(&mut rand::thread_rng()) as usize);
             return Some(TaskDefinition::new(
                 self.exectime_rnd.sample(&mut rand::thread_rng()) as usize,
                 rand::random(),

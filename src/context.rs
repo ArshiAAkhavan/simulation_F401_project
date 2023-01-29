@@ -42,6 +42,7 @@ impl Context for DeadlineContext {
             return match self.task.status {
                 task::Status::Ready => Status::TimeOut,
                 task::Status::Finished => Status::Finished,
+                task::Status::TimeOut => Status::Finished,
             };
         }
         self.task.exec(clock);
@@ -66,6 +67,7 @@ impl Context for DefaultContext {
                 Status::Ready
             }
             task::Status::Finished => Status::Finished,
+            task::Status::TimeOut => Status::Finished,
         }
     }
 
