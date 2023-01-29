@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use simul::{task::TaskDefinition, JobDispatcher, Scheduler};
+use simul::{JobDispatcher, Scheduler};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
