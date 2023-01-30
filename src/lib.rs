@@ -163,7 +163,8 @@ impl<Dispatcher> Scheduler<Dispatcher> {
             return;
         }
         let mut counter = self.job_threshold;
-        while let Some(task) = self.priority_queue.pop() {
+        while let Some(mut task) = self.priority_queue.pop() {
+            task.set_schedule_time(self.clock);
             self.q1.push(task);
             counter -= 1;
             if counter == 0 {

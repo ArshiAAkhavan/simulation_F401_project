@@ -9,6 +9,7 @@ use crate::context::{DeadlineContext, DefaultContext};
 pub struct Task {
     exec_time: usize,
     arrival_time: usize,
+    schedule_time: Option<usize>,
     remaining: usize,
     priority: Priority,
     pub status: Status,
@@ -45,12 +46,16 @@ impl Task {
         Self {
             exec_time,
             arrival_time: arival_time,
+            schedule_time: None,
             remaining: exec_time,
             priority,
             status: Status::Ready,
             progress: Vec::new(),
             timeout,
         }
+    }
+    pub fn set_schedule_time(&mut self, time: usize) {
+        self.schedule_time = Some(time);
     }
 
     pub fn exec(&mut self, clock: usize) {
@@ -87,6 +92,7 @@ impl Task {
             service_start,
             service_end,
             arrival_time: self.arrival_time,
+            schedule_time: self.schedule_time.unwrap_or_default(),
             service_time: self.progress.len(),
             exec_time: self.exec_time,
             priority: format!("{:?}", self.priority),
@@ -100,6 +106,7 @@ pub struct TaskRecord {
     service_start: usize,
     service_end: usize,
     arrival_time: usize,
+    schedule_time: usize,
     service_time: usize,
     exec_time: usize,
     priority: String,
