@@ -55,7 +55,7 @@ impl Task {
 
     pub fn exec(&mut self, clock: usize) {
         if let Some(timeout) = self.timeout {
-            if timeout < self.arrival_time + clock {
+            if self.arrival_time + timeout < clock {
                 self.status = Status::TimeOut;
                 return;
             }
