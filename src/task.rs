@@ -78,9 +78,14 @@ impl Task {
     }
 
     pub fn export(&self) -> TaskRecord {
+        let service_start = self.progress.first().copied().unwrap_or_default();
+        let service_end = match self.status {
+            Status::Ready | Status::Finished => self.progress.last().copied().unwrap_or_default(),
+            Status::TimeOut => self.arrival_time + self.timeout.unwrap(),
+        };
         TaskRecord {
-            service_start: self.progress.first().copied().unwrap_or_default(),
-            service_end: self.progress.last().copied().unwrap_or_default(),
+            service_start,
+            service_end,
             arrival_time: self.arrival_time,
             service_time: self.progress.len(),
             exec_time: self.exec_time,
