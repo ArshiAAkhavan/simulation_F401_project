@@ -18,6 +18,10 @@ struct Cli {
     #[arg(short, long)]
     arrival_rate: f64,
 
+    /// total number of jobs
+    #[arg(short, long)]
+    num_jobs: usize,
+
     /// execution rate of the jobs
     #[arg(short, long)]
     exec_rate: f64,
@@ -55,6 +59,7 @@ fn main() {
         opt.job_sync_period,
         opt.job_threshold,
         opt.arrival_rate,
+        opt.num_jobs,
         opt.exec_rate,
         opt.rrt1,
         opt.rrt2,

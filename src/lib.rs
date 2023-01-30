@@ -71,6 +71,7 @@ impl Scheduler<DefaultDispatcher> {
         job_sync_period: usize,
         job_threshold: usize,
         arrival_rate: f64,
+        num_jobs: usize,
         exec_rate: f64,
         rr_t1: usize,
         rr_t2: usize,
@@ -86,7 +87,7 @@ impl Scheduler<DefaultDispatcher> {
             done: Vec::new(),
             phantom: PhantomData,
             job_threshold,
-            job_creator: JobCreator::new(arrival_rate, exec_rate, timeout_rate)?,
+            job_creator: JobCreator::new(arrival_rate,num_jobs, exec_rate, timeout_rate)?,
             running_task: None,
         })
     }
